@@ -1,0 +1,12 @@
+{
+  // Supabase table: public.audit_logs
+  // Used by the dashboard recent activity feed.
+  "id": "uuid",
+  "type": "string",
+  "title": "string",
+  "detail": "string",
+  "amount": "number",
+  "status": "string | null",
+  "actor_member_id": "uuid references public.members.id | null",
+  "created_at": "ISO datetime"
+}

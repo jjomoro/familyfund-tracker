@@ -1,0 +1,9 @@
+{
+  // Supabase table: public.fund_settings
+  // Single-row table: id is always 1.
+  "id": 1,
+  "currency": "string, e.g. KES",
+  "start_date": "YYYY-MM-DD",
+  "fund_name": "string",
+  "updated_at": "ISO datetime"
+}

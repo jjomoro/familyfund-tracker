@@ -1,0 +1,13 @@
+{
+  // Supabase table: public.withdrawals
+  // Members can create/read their own requests. Admins can read and review all requests.
+  "id": "uuid",
+  "requested_by_member_id": "uuid references public.members.id",
+  "amount": "number",
+  "reason": "string",
+  "status": "pending | approved | rejected",
+  "requested_at": "ISO datetime",
+  "reviewed_by": "uuid of admin member | null",
+  "reviewed_at": "ISO datetime | null",
+  "rejection_note": "string | null"
+}

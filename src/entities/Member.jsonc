@@ -1,0 +1,12 @@
+{
+  // Supabase table: public.members
+  // user_id links the member record to Supabase Auth. It is null for invited members until they create an account with the same email.
+  "id": "uuid",
+  "user_id": "auth.users.id | null",
+  "name": "string",
+  "email": "string, unique",
+  "monthly_target": "number",
+  "role": "admin | member",
+  "created_at": "ISO datetime",
+  "updated_at": "ISO datetime"
+}

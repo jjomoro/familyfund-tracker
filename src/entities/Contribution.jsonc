@@ -1,0 +1,12 @@
+{
+  // Supabase table: public.contributions
+  // Admin-only write. Admins can read all; members can read only their own contribution rows through RLS.
+  "id": "uuid",
+  "member_id": "uuid references public.members.id",
+  "amount": "number",
+  "month": "1-12",
+  "year": "number",
+  "status": "paid | partial | outstanding",
+  "recorded_by": "uuid of admin member | null",
+  "recorded_at": "ISO datetime"
+}
