@@ -1,4 +1,4 @@
-# FamilyFund Tracker — Supabase Version
+# FamilyFund Tracker
 
 FamilyFund Tracker is a React/Vite app for managing a shared monthly family emergency fund.
 
