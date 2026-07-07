@@ -21,7 +21,7 @@ export default function AuthPage({ onSignIn, onSignUp, isSubmitting, errorMessag
     <main className="auth-shell">
       <section className="auth-card">
         <div className="brand-mark auth-brand">
-          <span>OMORO</span>
+          <span>FF</span>
           <div>
             <strong>Family Fund</strong>
             <small>Family support, but make it organized.</small>
