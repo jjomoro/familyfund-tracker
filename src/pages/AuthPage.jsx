@@ -32,7 +32,7 @@ export default function AuthPage({ onSignIn, onSignUp, isSubmitting, errorMessag
           <p className="eyebrow">Omoro</p>
           <h1>{mode === "signin" ? "Sign in" : "Create account"}</h1>
           <p className="muted auth-copy">
-          Sign in to view your contribution status, fund balance, recent activity, and withdrawal requests. No guesswork. No missing records. No “who paid what?” debates.
+          Sign in to view your contribution status, fund balance, recent activity, and withdrawal requests.
           </p>
         </div>
 
