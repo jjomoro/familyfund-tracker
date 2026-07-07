@@ -46,12 +46,12 @@ export default function ContributionsPage({ members, currentUser, contributions,
             <tbody>
               {sortedRows.map((row) => (
                 <tr key={`${row.member.id}-${row.month}-${row.year}`}>
-                  {currentUser.role === "admin" ? <td>{row.member.name}</td> : null}
-                  <td>{monthNames[row.month - 1]} {row.year}</td>
-                  <td>{formatMoney(row.target, settings.currency)}</td>
-                  <td>{formatMoney(row.paid, settings.currency)}</td>
-                  <td>{formatMoney(row.outstanding, settings.currency)}</td>
-                  <td><StatusBadge status={row.status} /></td>
+                  {currentUser.role === "admin" ? <td data-label="Member">{row.member.name}</td> : null}
+                  <td data-label="Month">{monthNames[row.month - 1]} {row.year}</td>
+                  <td data-label="Target">{formatMoney(row.target, settings.currency)}</td>
+                  <td data-label="Paid">{formatMoney(row.paid, settings.currency)}</td>
+                  <td data-label="Outstanding">{formatMoney(row.outstanding, settings.currency)}</td>
+                  <td data-label="Status"><StatusBadge status={row.status} /></td>
                 </tr>
               ))}
             </tbody>

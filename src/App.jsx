@@ -9,6 +9,7 @@ import {
   getInitialSession,
   loadFundData,
   onAuthStateChange,
+  deleteMember as deleteMemberRequest,
   recordContribution as recordContributionRequest,
   reviewWithdrawal as reviewWithdrawalRequest,
   saveMember as saveMemberRequest,
@@ -177,6 +178,10 @@ export default function App() {
     runMutation(() => saveMemberRequest({ currentUser, memberPayload }));
   }
 
+  function deleteMember(member) {
+    runMutation(() => deleteMemberRequest({ currentUser, member }));
+  }
+
   function saveSettings(nextSettings) {
     runMutation(() => saveSettingsRequest({ currentUser, settings: nextSettings }));
   }
@@ -265,6 +270,7 @@ export default function App() {
           currentUser={currentUser}
           settings={settings}
           onSaveMember={saveMember}
+          onDeleteMember={deleteMember}
           onSaveSettings={saveSettings}
           isSubmitting={isSubmitting}
         />

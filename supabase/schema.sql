@@ -22,9 +22,14 @@ create table if not exists public.members (
   email text unique not null,
   monthly_target numeric(12,2) not null default 0 check (monthly_target >= 0),
   role text not null default 'member' check (role in ('admin', 'member')),
+  deleted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+
+-- Migration-safe additions for projects created with older versions of this app.
+alter table public.members add column if not exists deleted_at timestamptz;
 
 create table if not exists public.fund_settings (
   id int primary key default 1 check (id = 1),
@@ -143,6 +148,7 @@ begin
   on conflict (email) do update
     set user_id = excluded.user_id,
         name = coalesce(public.members.name, excluded.name),
+        deleted_at = null,
         updated_at = now();
 
   return new;
@@ -164,6 +170,7 @@ alter table public.audit_logs enable row level security;
 drop policy if exists "members_select_authenticated" on public.members;
 drop policy if exists "members_admin_insert" on public.members;
 drop policy if exists "members_admin_update" on public.members;
+drop policy if exists "members_admin_delete" on public.members;
 drop policy if exists "settings_select_authenticated" on public.fund_settings;
 drop policy if exists "settings_admin_write" on public.fund_settings;
 drop policy if exists "contributions_select_scope" on public.contributions;
@@ -191,6 +198,11 @@ on public.members for update
 to authenticated
 using (public.is_admin())
 with check (public.is_admin());
+
+create policy "members_admin_delete"
+on public.members for delete
+to authenticated
+using (public.is_admin());
 
 create policy "settings_select_authenticated"
 on public.fund_settings for select
@@ -334,6 +346,7 @@ begin
       and c.month = extract(month from now())::int
       and c.year = extract(year from now())::int
     where mem.role = 'member'
+      and mem.deleted_at is null
     group by mem.id, mem.name, mem.monthly_target
   ),
   recent as (

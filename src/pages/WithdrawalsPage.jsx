@@ -50,16 +50,16 @@ export default function WithdrawalsPage({ members, currentUser, withdrawals, set
                 const requester = getMemberById(members, withdrawal.requested_by_member_id);
                 return (
                   <tr key={withdrawal.id}>
-                    <td>{requester?.name || "Unknown member"}</td>
-                    <td>{formatMoney(withdrawal.amount, settings.currency)}</td>
-                    <td>
+                    <td data-label="Requester">{requester?.name || "Unknown member"}</td>
+                    <td data-label="Amount">{formatMoney(withdrawal.amount, settings.currency)}</td>
+                    <td data-label="Reason">
                       {withdrawal.reason}
                       {withdrawal.rejection_note ? <small className="note-block">Note: {withdrawal.rejection_note}</small> : null}
                     </td>
-                    <td><StatusBadge status={withdrawal.status} /></td>
-                    <td>{new Date(withdrawal.requested_at).toLocaleDateString()}</td>
+                    <td data-label="Status"><StatusBadge status={withdrawal.status} /></td>
+                    <td data-label="Requested">{new Date(withdrawal.requested_at).toLocaleDateString()}</td>
                     {currentUser.role === "admin" ? (
-                      <td>
+                      <td data-label="Action">
                         {withdrawal.status === "pending" ? (
                           <div className="inline-actions">
                             <button

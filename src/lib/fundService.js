@@ -44,16 +44,18 @@ function throwIfError(error, fallbackMessage = "Supabase request failed") {
 }
 
 export async function signInWithEmail({ email, password }) {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
   throwIfError(error, "Could not sign in");
 }
 
 export async function signUpWithEmail({ name, email, password }) {
+  const redirectUrl = `${window.location.origin}${import.meta.env.BASE_URL}`;
   const { error } = await supabase.auth.signUp({
-    email,
+    email: email.trim().toLowerCase(),
     password,
     options: {
-      data: { name }
+      data: { name },
+      emailRedirectTo: redirectUrl
     }
   });
   throwIfError(error, "Could not create account");
@@ -100,10 +102,11 @@ export async function loadFundData(authUserId) {
     monthly_target: Number(member.monthly_target || 0)
   }));
 
-  const currentUser = members.find((member) => member.user_id === authUserId) || null;
+  const currentUser = members.find((member) => member.user_id === authUserId && !member.deleted_at) || null;
+  const activeMembers = members.filter((member) => !member.deleted_at);
 
   return {
-    members,
+    members: activeMembers,
     currentUser,
     settings: settingsResult.data,
     contributions: normalizeArray(contributionsResult.data).map((contribution) => ({
@@ -228,17 +231,31 @@ export async function saveMember({ currentUser, memberPayload }) {
   if (currentUser.role !== "admin") throw new Error("Only admins can save members.");
 
   const payload = {
-    name: memberPayload.name,
-    email: memberPayload.email,
+    name: memberPayload.name.trim(),
+    email: memberPayload.email.trim().toLowerCase(),
     monthly_target: Number(memberPayload.monthly_target || 0),
-    role: memberPayload.role
+    role: memberPayload.role,
+    deleted_at: null
   };
 
-  const request = memberPayload.id
+  let request = memberPayload.id
     ? supabase.from("members").update(payload).eq("id", memberPayload.id).select().single()
     : supabase.from("members").insert(payload).select().single();
 
-  const { data, error } = await request;
+  let { data, error } = await request;
+
+  // If this email already existed as an archived member, restore and update it instead of failing.
+  if (!memberPayload.id && error?.code === "23505") {
+    const restoreResult = await supabase
+      .from("members")
+      .update(payload)
+      .eq("email", payload.email)
+      .select()
+      .single();
+    data = restoreResult.data;
+    error = restoreResult.error;
+  }
+
   throwIfError(error, "Could not save member");
 
   await writeAudit({
@@ -248,6 +265,34 @@ export async function saveMember({ currentUser, memberPayload }) {
       detail: `${payload.name} — ${payload.role}`,
       amount: payload.monthly_target,
       status: payload.role
+    }),
+    actor_member_id: currentUser.id
+  });
+
+  return data;
+}
+
+export async function deleteMember({ currentUser, member }) {
+  if (currentUser.role !== "admin") throw new Error("Only admins can remove members.");
+  if (!member?.id) throw new Error("Select a valid member to remove.");
+  if (member.id === currentUser.id) throw new Error("You cannot remove your own admin account while signed in.");
+
+  const { data, error } = await supabase
+    .from("members")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", member.id)
+    .select()
+    .single();
+
+  throwIfError(error, "Could not remove member");
+
+  await writeAudit({
+    ...buildAuditItem({
+      type: "member_archived",
+      title: "Member removed",
+      detail: `${member.name} was removed from active fund access. Historical records were kept for audit purposes.`,
+      amount: 0,
+      status: "archived"
     }),
     actor_member_id: currentUser.id
   });

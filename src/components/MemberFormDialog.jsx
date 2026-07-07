@@ -14,12 +14,18 @@ export default function MemberFormDialog({ member, onClose, onSubmit, isSubmitti
 
   function handleSubmit(event) {
     event.preventDefault();
-    onSubmit({ ...member, ...form, monthly_target: Number(form.monthly_target || 0) });
+    onSubmit({
+      ...member,
+      ...form,
+      name: form.name.trim(),
+      email: form.email.trim().toLowerCase(),
+      monthly_target: Number(form.monthly_target || 0)
+    });
   }
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <form className="dialog-card" onSubmit={handleSubmit}>
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <form className="dialog-card" onSubmit={handleSubmit} onMouseDown={(event) => event.stopPropagation()}>
         <div className="dialog-header">
           <div>
             <p className="eyebrow">Family setup</p>
@@ -30,7 +36,7 @@ export default function MemberFormDialog({ member, onClose, onSubmit, isSubmitti
 
         <label>
           Name
-          <input value={form.name} onChange={(event) => updateField("name", event.target.value)} required />
+          <input value={form.name} onChange={(event) => updateField("name", event.target.value)} required autoFocus />
         </label>
 
         <label>
@@ -56,6 +62,10 @@ export default function MemberFormDialog({ member, onClose, onSubmit, isSubmitti
             <option value="admin">Admin</option>
           </select>
         </label>
+
+        <p className="muted">
+          Saving this member creates or updates their fund profile. It does not automatically create a Supabase Auth account; use Copy Invite after saving.
+        </p>
 
         <div className="dialog-actions">
           <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>

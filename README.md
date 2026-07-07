@@ -1,4 +1,4 @@
-# FamilyFund Tracker
+# FamilyFund Tracker 
 
 FamilyFund Tracker is a React/Vite app for managing a shared monthly family emergency fund.
 
@@ -206,3 +206,44 @@ For real use, turn email confirmation back on.
 - Fund records are no longer stored in browser `localStorage`.
 - Supabase Auth may still store the user session token in the browser. That is normal for client-side apps.
 - For stronger production-grade audit logs, move write actions behind Supabase Edge Functions or your own backend.
+
+## GitHub Actions npm registry fix
+
+If GitHub Actions fails with a URL containing `packages.applied-caas-gateway1.internal.api.openai.org`, delete `package-lock.json` and keep the included `.npmrc`. That internal URL came from the original generated environment and GitHub cannot access it. This project now installs from the public npm registry.
+
+## Member management update
+
+This version adds safer admin member management:
+
+- **Add Member** opens a working modal from Settings.
+- **Copy Invite** copies a WhatsApp/email invite message with the app link.
+- **Remove** archives/deactivates the member from active access while keeping historical contributions, withdrawals, and audit records.
+
+### Existing Supabase project migration
+
+If you already ran the first schema, run this file in Supabase SQL Editor:
+
+```text
+supabase/migrations/20260707_member_management.sql
+```
+
+Then redeploy the GitHub Pages workflow.
+
+### Why Remove does not hard-delete Auth users
+
+The frontend uses the public anon key, so it cannot safely call Supabase Auth admin methods. True Auth user deletion requires a server-side function with the service role key. Do not put the service role key in this React app or GitHub Pages secrets intended for Vite builds.
+
+## Mobile responsiveness update
+
+This build keeps the existing Supabase database/auth logic intact and only adjusts the front-end presentation layer.
+
+What changed:
+
+- Sticky compact mobile header/navigation
+- Dashboard KPI cards tightened for small screens
+- Contribution, withdrawal, and member tables convert into mobile card rows
+- Dialogs behave better on phones and fit within the viewport
+- Buttons and inputs use touch-friendly sizing
+- Long emails, reasons, and amounts wrap safely instead of overflowing
+
+To apply on GitHub Pages, replace your current repo files with this version, commit, and push. No new Supabase SQL migration is required for this mobile-only update if you already ran the member-management migration.
