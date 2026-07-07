@@ -21,16 +21,22 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: 24
-          cache: npm
+          node-version: 20
+
+      - name: Force public npm registry
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm config delete proxy || true
+          npm config delete https-proxy || true
+          npm config get registry
 
       - name: Install dependencies
-        run: npm install --include=dev
+        run: npm install --include=dev --no-audit --no-fund
 
       - name: Build app
         run: npm run build
@@ -40,7 +46,7 @@ jobs:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
 
       - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
@@ -55,4 +61,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4
