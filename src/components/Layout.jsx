@@ -4,6 +4,7 @@ const navItems = [
   { key: "dashboard", label: "Dashboard" },
   { key: "contributions", label: "Contributions" },
   { key: "withdrawals", label: "Withdrawals" },
+  { key: "reports", label: "Reports" },
   { key: "settings", label: "Settings" }
 ];
 
@@ -67,6 +68,7 @@ function pageTitle(page) {
     dashboard: "Dashboard",
     contributions: "Contributions",
     withdrawals: "Withdrawals",
+    reports: "Reports",
     settings: "Settings"
   };
   return titles[page] || "Dashboard";

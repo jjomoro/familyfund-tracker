@@ -1014,3 +1014,50 @@ textarea {
     min-width: 500px;
   }
 }
+
+
+.report-controls {
+  display: grid;
+  gap: 20px;
+}
+
+.report-selector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.report-selector-grid label {
+  display: grid;
+  gap: 7px;
+  color: var(--slate-700);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.report-selector-grid select {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--slate-200);
+  border-radius: 8px;
+  background: white;
+  color: var(--slate-900);
+  font: inherit;
+}
+
+.report-download-button {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .report-selector-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-download-button {
+    width: 100%;
+  }
+}

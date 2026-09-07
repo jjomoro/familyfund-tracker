@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ContributionsPage from "./pages/ContributionsPage";
 import WithdrawalsPage from "./pages/WithdrawalsPage";
 import SettingsPage from "./pages/SettingsPage";
+import ReportsPage from "./pages/ReportsPage";
 import {
   getInitialSession,
   loadFundData,
@@ -261,6 +262,15 @@ export default function App() {
           onSubmitWithdrawal={submitWithdrawal}
           onReviewWithdrawal={reviewWithdrawal}
           isSubmitting={isSubmitting}
+        />
+      ) : null}
+
+      {page === "reports" ? (
+        <ReportsPage
+          members={members}
+          contributions={contributions}
+          withdrawals={withdrawals}
+          settings={settings}
         />
       ) : null}
 

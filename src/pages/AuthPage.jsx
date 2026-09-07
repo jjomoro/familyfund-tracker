@@ -23,16 +23,16 @@ export default function AuthPage({ onSignIn, onSignUp, isSubmitting, errorMessag
         <div className="brand-mark auth-brand">
           <span>FF</span>
           <div>
-            <strong>Family Fund</strong>
-            <small>Family support, but make it organized.</small>
+            <strong>FamilyFund Tracker</strong>
+            <small>Shared visibility. Admin control.</small>
           </div>
         </div>
 
         <div>
-          <p className="eyebrow">Omoro</p>
+          <p className="eyebrow">Supabase secured</p>
           <h1>{mode === "signin" ? "Sign in" : "Create account"}</h1>
           <p className="muted auth-copy">
-          Sign in to view your contribution status, fund balance, recent activity, and withdrawal requests.
+            Fund records are stored in Supabase. The first account created after running the schema becomes the admin.
           </p>
         </div>
 
