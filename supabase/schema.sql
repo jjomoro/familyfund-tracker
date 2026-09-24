@@ -77,6 +77,23 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default now()
 );
 
+-- Explicit Data API table grants. RLS below still controls row-level access.
+-- No anon grants are provided because FamilyFund Tracker requires authentication.
+grant select, insert, update, delete on table public.members to authenticated;
+grant select, insert, update, delete on table public.members to service_role;
+
+grant select, insert, update, delete on table public.fund_settings to authenticated;
+grant select, insert, update, delete on table public.fund_settings to service_role;
+
+grant select, insert, update, delete on table public.contributions to authenticated;
+grant select, insert, update, delete on table public.contributions to service_role;
+
+grant select, insert, update, delete on table public.withdrawals to authenticated;
+grant select, insert, update, delete on table public.withdrawals to service_role;
+
+grant select, insert, update, delete on table public.audit_logs to authenticated;
+grant select, insert, update, delete on table public.audit_logs to service_role;
+
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql

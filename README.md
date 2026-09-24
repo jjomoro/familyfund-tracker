@@ -247,3 +247,9 @@ What changed:
 - Long emails, reasons, and amounts wrap safely instead of overflowing
 
 To apply on GitHub Pages, replace your current repo files with this version, commit, and push. No new Supabase SQL migration is required for this mobile-only update if you already ran the member-management migration.
+
+## Supabase Data API grants
+
+This version includes explicit PostgreSQL grants for the Data API on all FamilyFund application tables. The migration `supabase/migrations/20260924_data_api_grants.sql` applies the grants to an existing Supabase project. The base `supabase/schema.sql` also includes the grants so fresh setups, migrations, previews, and `supabase db reset` keep the permissions explicit.
+
+The app does not grant `anon` access to family financial tables because application data requires authentication. Row-level access remains controlled by the existing RLS policies.
