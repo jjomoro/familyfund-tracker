@@ -50,7 +50,7 @@ create table if not exists public.contributions (
   month int not null check (month between 1 and 12),
   year int not null check (year between 2020 and 2100),
   status text not null check (status in ('paid', 'partial', 'outstanding')),
-  payment_method text not null default 'manual' check (payment_method in ('manual','mpesa','cash','bank','other')),
+  payment_method text not null default 'manual' check (payment_method in ('manual','cash','bank','other')),
   transaction_reference text,
   payment_date date,
   verification_status text not null default 'verified' check (verification_status in ('pending','verified','rejected')),
@@ -235,7 +235,7 @@ on public.contributions for insert
 to authenticated
 with check (
   public.is_admin()
-  or (member_id = public.current_member_id() and verification_status = 'pending' and payment_method = 'mpesa' and recorded_by = public.current_member_id())
+  or (member_id = public.current_member_id() and verification_status = 'pending' and payment_method = 'manual' and recorded_by = public.current_member_id())
 );
 
 create policy "contributions_admin_update"

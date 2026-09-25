@@ -1,18 +1,17 @@
 import { useMemo, useState } from "react";
 import ContributionFormDialog from "../components/ContributionFormDialog";
-import MpesaPaymentDialog from "../components/MpesaPaymentDialog";
 import StatusBadge from "../components/StatusBadge";
 import { formatMoney, getAdminContributionHistory, getMemberContributionHistory, monthNames } from "../lib/fundUtils";
 import { reminderText } from "../lib/featureUtils";
 
-export default function ContributionsPage({ members, currentUser, contributions, settings, onRecordContribution, onSubmitMpesaPayment, onVerifyContribution, isSubmitting }) {
+export default function ContributionsPage({ members, currentUser, contributions, settings, onRecordContribution, onSubmitContribution, onVerifyContribution, isSubmitting }) {
   const [showForm, setShowForm] = useState(false);
-  const [showMpesa, setShowMpesa] = useState(false);
+  const [showMemberForm, setShowMemberForm] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const isAdmin = currentUser.role === "admin";
   const rows = isAdmin ? getAdminContributionHistory(members, contributions, settings) : getMemberContributionHistory(currentUser, contributions, settings);
-  const pendingPayments = isAdmin ? contributions.filter(c => c.payment_method === "mpesa" && c.verification_status === "pending") : contributions.filter(c => c.member_id === currentUser.id && c.payment_method === "mpesa" && c.verification_status === "pending");
+  const pendingPayments = isAdmin ? contributions.filter(c => c.verification_status === "pending") : contributions.filter(c => c.member_id === currentUser.id && c.verification_status === "pending");
 
   const filtered = useMemo(() => rows
     .filter((row) => {
@@ -45,28 +44,28 @@ export default function ContributionsPage({ members, currentUser, contributions,
         <section className="payment-cta card-section">
           <div>
             <p className="eyebrow">{currentMonthLabel} contribution</p>
-            <h2>Record your M-Pesa payment</h2>
-            <p className="muted">Pay normally through M-Pesa, then enter the transaction code here. An admin verifies it before it is added to the fund balance.</p>
+            <h2>Record your contribution</h2>
+            <p className="muted">Enter the amount you paid. An admin will verify it before it is added to the fund balance.</p>
             <div className="payment-state-row">
               <span>Verified: <strong>{formatMoney(memberState.paid, settings.currency)}</strong></span>
               {memberState.pending > 0 ? <span>Awaiting verification: <strong>{formatMoney(memberState.pending, settings.currency)}</strong></span> : null}
               <span>Outstanding: <strong>{formatMoney(memberState.outstanding, settings.currency)}</strong></span>
             </div>
           </div>
-          <button className="primary-button" onClick={() => setShowMpesa(true)}>Submit M-Pesa Payment</button>
+          <button className="primary-button" onClick={() => setShowMemberForm(true)}>Submit Contribution</button>
         </section>
       ) : null}
 
       {isAdmin && pendingPayments.length ? (
         <section className="table-card verification-card">
-          <div className="section-heading"><div><p className="eyebrow">Admin verification</p><h2>M-Pesa payments awaiting verification</h2></div><strong>{pendingPayments.length}</strong></div>
+          <div className="section-heading"><div><p className="eyebrow">Admin verification</p><h2>Contributions awaiting verification</h2></div><strong>{pendingPayments.length}</strong></div>
           <div className="verification-list">
             {pendingPayments.map(payment => {
               const member = members.find(m => m.id === payment.member_id);
               return <div className="verification-row" key={payment.id}>
-                <div><strong>{member?.name || "Unknown member"}</strong><span>{monthNames[payment.month - 1]} {payment.year} · {payment.transaction_reference}</span></div>
+                <div><strong>{member?.name || "Unknown member"}</strong><span>{monthNames[payment.month - 1]} {payment.year}</span></div>
                 <strong>{formatMoney(payment.amount, settings.currency)}</strong>
-                <div className="inline-actions"><button className="secondary-button compact" onClick={() => onVerifyContribution(payment.id, "rejected")} disabled={isSubmitting}>Reject</button><button className="primary-button compact" onClick={() => onVerifyContribution(payment.id, "verified")} disabled={isSubmitting}>Verify payment</button></div>
+                <div className="inline-actions"><button className="secondary-button compact" onClick={() => onVerifyContribution(payment.id, "rejected")} disabled={isSubmitting}>Reject</button><button className="primary-button compact" onClick={() => onVerifyContribution(payment.id, "verified")} disabled={isSubmitting}>Verify contribution</button></div>
               </div>;
             })}
           </div>
@@ -98,9 +97,9 @@ export default function ContributionsPage({ members, currentUser, contributions,
           {!filtered.length ? <div className="empty-state">No contribution records match these filters.</div> : null}
         </div>
       </section>
-      {pendingPayments.length && !isAdmin ? <section className="card-section"><strong>Pending M-Pesa submissions</strong><div className="pending-mini-list">{pendingPayments.map(p => <div key={p.id}><span>{p.transaction_reference} · {formatMoney(p.amount, settings.currency)}</span><StatusBadge status="pending" /></div>)}</div></section> : null}
+      {pendingPayments.length && !isAdmin ? <section className="card-section"><strong>Pending contributions</strong><div className="pending-mini-list">{pendingPayments.map(p => <div key={p.id}><span>{monthNames[p.month - 1]} {p.year} · {formatMoney(p.amount, settings.currency)}</span><StatusBadge status="pending" /></div>)}</div></section> : null}
       {showForm ? <ContributionFormDialog members={members} onClose={() => setShowForm(false)} onSubmit={(payload) => { onRecordContribution(payload); setShowForm(false); }} isSubmitting={isSubmitting} /> : null}
-      {showMpesa ? <MpesaPaymentDialog currentUser={currentUser} settings={settings} contributions={contributions} onClose={() => setShowMpesa(false)} onSubmit={(payload) => { onSubmitMpesaPayment(payload); setShowMpesa(false); }} isSubmitting={isSubmitting} /> : null}
+      {showMemberForm ? <ContributionFormDialog members={members} currentUser={currentUser} mode="member" onClose={() => setShowMemberForm(false)} onSubmit={(payload) => { onSubmitContribution(payload); setShowMemberForm(false); }} isSubmitting={isSubmitting} /> : null}
     </div>
   );
 }

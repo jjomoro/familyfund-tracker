@@ -132,11 +132,12 @@ export async function loadFundData(authUserId) {
 }
 
 export async function recordContribution({ members, contributions, currentUser, payload }) {
-  if (currentUser.role !== "admin") throw new Error("Only admins can record contributions.");
+  if (currentUser.role !== "admin") throw new Error("Only admins can record contributions for members.");
 
   const member = getMemberById(members, payload.member_id);
   const alreadyPaid = getMemberMonthlyPaid(contributions, payload.member_id, payload.month, payload.year);
   const amount = Number(payload.amount || 0);
+  if (amount <= 0) throw new Error("Enter a valid contribution amount.");
   const status = getContributionStatus(member?.monthly_target || 0, alreadyPaid + amount);
 
   const { data, error } = await supabase
@@ -172,58 +173,59 @@ export async function recordContribution({ members, contributions, currentUser, 
   return data;
 }
 
-
-export async function submitMpesaPayment({ members, contributions, currentUser, payload }) {
+export async function submitMemberContribution({ members, contributions, currentUser, payload }) {
   if (currentUser.role === "admin") throw new Error("Use the admin contribution form for manual entries.");
-  const reference = String(payload.transaction_reference || "").trim().toUpperCase();
-  if (!reference) throw new Error("Enter the M-Pesa transaction code.");
+
   const amount = Number(payload.amount || 0);
-  if (amount <= 0) throw new Error("Enter a valid payment amount.");
+  if (amount <= 0) throw new Error("Enter a valid contribution amount.");
 
-  const duplicate = contributions.find(c => String(c.transaction_reference || "").toUpperCase() === reference);
-  if (duplicate) throw new Error("This M-Pesa transaction code has already been submitted.");
+  const alreadyPaid = getMemberMonthlyPaid(contributions, currentUser.id, payload.month, payload.year);
+  const status = getContributionStatus(currentUser.monthly_target || 0, alreadyPaid + amount);
 
-  const status = getContributionStatus(currentUser.monthly_target || 0, getMemberMonthlyPaid(contributions, currentUser.id, payload.month, payload.year) + amount);
   const { data, error } = await supabase.from("contributions").insert({
     member_id: currentUser.id,
     amount,
     month: Number(payload.month),
     year: Number(payload.year),
     status,
-    payment_method: "mpesa",
-    transaction_reference: reference,
-    payment_date: payload.payment_date || new Date().toISOString().slice(0, 10),
+    payment_method: "manual",
     verification_status: "pending",
     recorded_by: currentUser.id
   }).select().single();
 
-  throwIfError(error, error?.code === "23505" ? "This M-Pesa transaction code has already been submitted." : "Could not submit M-Pesa payment");
+  throwIfError(error, "Could not submit contribution");
   await writeAudit({
-    ...buildAuditItem({ type: "mpesa_payment_submitted", title: "M-Pesa payment submitted", detail: `${currentUser.name} submitted ${amount.toLocaleString()} for ${payload.month}/${payload.year} — ${reference}`, amount, status: "pending" }),
+    ...buildAuditItem({
+      type: "contribution_submitted",
+      title: "Contribution submitted for verification",
+      detail: `${currentUser.name} submitted ${amount.toLocaleString()} for ${payload.month}/${payload.year}`,
+      amount,
+      status: "pending"
+    }),
     actor_member_id: currentUser.id
   });
   return data;
 }
 
 export async function verifyContribution({ members, contributions, currentUser, contributionId, decision }) {
-  if (currentUser.role !== "admin") throw new Error("Only admins can verify payments.");
+  if (currentUser.role !== "admin") throw new Error("Only admins can verify contributions.");
   const contribution = contributions.find(c => c.id === contributionId);
-  if (!contribution || contribution.verification_status !== "pending") throw new Error("This payment is no longer awaiting verification.");
+  if (!contribution || contribution.verification_status !== "pending") throw new Error("This contribution is no longer awaiting verification.");
   const member = getMemberById(members, contribution.member_id);
-  if (!member) throw new Error("Member not found for this payment.");
+  if (!member) throw new Error("Member not found for this contribution.");
 
   if (decision === "rejected") {
     const { data, error } = await supabase.from("contributions").update({ verification_status: "rejected", verified_by: currentUser.id, verified_at: new Date().toISOString() }).eq("id", contribution.id).select().single();
-    throwIfError(error, "Could not reject payment");
-    await writeAudit({ ...buildAuditItem({ type: "mpesa_payment_rejected", title: "M-Pesa payment rejected", detail: `${member.name}'s ${contribution.transaction_reference} payment was rejected`, amount: contribution.amount, status: "rejected" }), actor_member_id: currentUser.id });
+    throwIfError(error, "Could not reject contribution");
+    await writeAudit({ ...buildAuditItem({ type: "contribution_rejected", title: "Contribution rejected", detail: `${member.name}'s contribution was rejected`, amount: contribution.amount, status: "rejected" }), actor_member_id: currentUser.id });
     return data;
   }
 
   const paidBefore = getMemberMonthlyPaid(contributions.filter(c => c.id !== contribution.id), member.id, contribution.month, contribution.year);
   const status = getContributionStatus(member.monthly_target, paidBefore + Number(contribution.amount));
   const { data, error } = await supabase.from("contributions").update({ verification_status: "verified", status, verified_by: currentUser.id, verified_at: new Date().toISOString() }).eq("id", contribution.id).select().single();
-  throwIfError(error, "Could not verify payment");
-  await writeAudit({ ...buildAuditItem({ type: "mpesa_payment_verified", title: "M-Pesa payment verified", detail: `${member.name}'s ${contribution.transaction_reference} payment was verified`, amount: contribution.amount, status }), actor_member_id: currentUser.id });
+  throwIfError(error, "Could not verify contribution");
+  await writeAudit({ ...buildAuditItem({ type: "contribution_verified", title: "Contribution verified", detail: `${member.name}'s contribution was verified`, amount: contribution.amount, status }), actor_member_id: currentUser.id });
   return data;
 }
 

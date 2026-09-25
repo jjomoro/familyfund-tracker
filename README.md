@@ -258,7 +258,11 @@ After replacing the project files, run `supabase/migrations/20260925_familyfund_
 ### GitHub Pages
 Keep Pages source set to **GitHub Actions**. The workflow builds `dist` and deploys the Vite output.
 
-## v3.1 M-Pesa member submission
-Members can submit an M-Pesa transaction code from the Contributions page. Submissions are stored as pending until an admin verifies them. Pending/rejected submissions do not affect the fund balance or contribution totals. Duplicate M-Pesa transaction references are blocked at the database level.
+## v3.1 payment member submission
+Members can submit an payment transaction code from the Contributions page. Submissions are stored as pending until an admin verifies them. Pending/rejected submissions do not affect the fund balance or contribution totals. Duplicate payment transaction references are blocked at the database level.
 
 Before using this feature, run `supabase/migrations/20260925_familyfund_features.sql` in the Supabase SQL Editor.
+
+
+### Member contribution verification
+Members can now record a contribution without entering an M-Pesa transaction code. Submissions are marked pending and do not affect the dashboard balance until an admin verifies them. Run `supabase/migrations/20260925_member_contribution_verification.sql` once in Supabase SQL Editor if the earlier v3.1 migration has already been applied.

@@ -1,12 +1,16 @@
 {
   // Supabase table: public.contributions
-  // Admin-only write. Admins can read all; members can read only their own contribution rows through RLS.
+  // Members can submit their own contributions as pending; only admins can verify/reject.
   "id": "uuid",
   "member_id": "uuid references public.members.id",
   "amount": "number",
   "month": "1-12",
   "year": "number",
   "status": "paid | partial | outstanding",
-  "recorded_by": "uuid of admin member | null",
+  "payment_method": "manual | cash | bank | other",
+  "verification_status": "pending | verified | rejected",
+  "recorded_by": "uuid",
+  "verified_by": "uuid | null",
+  "verified_at": "ISO datetime | null",
   "recorded_at": "ISO datetime"
 }

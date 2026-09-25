@@ -30,7 +30,7 @@ grant select, insert on public.audit_logs to authenticated;
 grant all on public.members, public.fund_settings, public.contributions, public.withdrawals, public.audit_logs to service_role;
 grant execute on function public.get_dashboard_snapshot() to authenticated;
 
--- Member-submitted M-Pesa payment workflow.
+-- Member-submitted contribution workflow. Members record the amount paid; admins verify it before it affects the fund.
 alter table public.contributions
   add column if not exists payment_method text not null default 'manual' check (payment_method in ('manual','mpesa','cash','bank','other')),
   add column if not exists transaction_reference text,
@@ -59,7 +59,7 @@ with check (
   or (
     member_id = public.current_member_id()
     and verification_status = 'pending'
-    and payment_method = 'mpesa'
+    and payment_method = 'manual'
     and recorded_by = public.current_member_id()
   )
 );
