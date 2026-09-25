@@ -1,3 +1,4 @@
+import React from "react";
 import StatusBadge from "./StatusBadge";
 
 const navItems = [
@@ -8,7 +9,10 @@ const navItems = [
   { key: "settings", label: "Settings" }
 ];
 
-export default function Layout({ children, page, setPage, currentUser, settings, onSignOut, onRefresh, isRefreshing }) {
+export default function Layout({ children, page, setPage, currentUser, settings, onSignOut, onRefresh, isRefreshing, notificationItems = [] }) {
+  const activeNotifications = notificationItems.filter(item => item.key !== "clear");
+  const [showNotifications, setShowNotifications] = React.useState(false);
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -45,6 +49,10 @@ export default function Layout({ children, page, setPage, currentUser, settings,
             <h1>{pageTitle(page)}</h1>
           </div>
           <div className="user-panel">
+            <div className="notification-wrap">
+              <button type="button" className="notification-button" onClick={() => setShowNotifications(!showNotifications)} aria-label="Notifications">Alerts{activeNotifications.length ? <span>{activeNotifications.length}</span> : null}</button>
+              {showNotifications ? <div className="notification-popover"><strong>Notifications</strong>{notificationItems.map(item => <button key={item.key} type="button" onClick={() => { setShowNotifications(false); if(item.key === "withdrawals") setPage("withdrawals"); else if(item.key === "dues") setPage("contributions"); }}><b>{item.title}</b><small>{item.detail}</small></button>)}</div> : null}
+            </div>
             <div className="signed-in-card">
               <span>Signed in as</span>
               <strong>{currentUser?.name || "Family member"}</strong>

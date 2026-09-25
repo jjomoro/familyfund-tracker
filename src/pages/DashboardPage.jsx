@@ -1,54 +1,22 @@
-import KpiCard from "../components/KpiCard";
-import MonthlyGrowthChart from "../components/MonthlyGrowthChart";
-import OutstandingList from "../components/OutstandingList";
-import RecentActivity from "../components/RecentActivity";
-import {
-  calculateFundBalance,
-  calculateOutstanding,
-  formatMoney,
-  getMonthlyGrowth,
-  getRecentActivity
-} from "../lib/fundUtils";
+import { useMemo, useState } from 'react';
+import MonthlyGrowthChart from '../components/MonthlyGrowthChart';
+import RecentActivity from '../components/RecentActivity';
+import StatusBadge from '../components/StatusBadge';
+import { formatMoney, getMonthlyGrowth, getRecentActivity, getMemberById } from '../lib/fundUtils';
+import { getAttentionItems, getFundBreakdown, getMonthlyHealth, memberStreak, reminderText } from '../lib/featureUtils';
 
-export default function DashboardPage({ members, contributions, withdrawals, auditTrail, settings, dashboardSnapshot }) {
-  const balance = dashboardSnapshot?.fundBalance ?? calculateFundBalance(contributions, withdrawals);
-  const outstanding = dashboardSnapshot?.outstanding ?? calculateOutstanding(members, contributions);
-  const outstandingTotal = outstanding.reduce((sum, item) => sum + Number(item.owed || 0), 0);
-  const growthData = dashboardSnapshot?.monthlyGrowth ?? getMonthlyGrowth(contributions, withdrawals, settings.start_date);
-  const previousBalance = growthData.at(-2)?.balance || 0;
-  const currentBalance = growthData.at(-1)?.balance || balance;
-  const growth = currentBalance - previousBalance;
-  const recentActivity = dashboardSnapshot?.recentActivity ?? getRecentActivity(members, contributions, withdrawals, auditTrail, 5);
-
-  return (
-    <div className="page-stack">
-      <section className="kpi-grid">
-        <KpiCard
-          label="Total Fund Balance"
-          value={formatMoney(balance, settings.currency)}
-          helper="Approved contributions minus approved withdrawals"
-          tone="primary"
-        />
-        <KpiCard
-          label="Monthly Growth"
-          value={formatMoney(growth, settings.currency)}
-          helper="Change since previous calendar month"
-          tone={growth >= 0 ? "positive" : "danger"}
-        />
-        <KpiCard
-          label="Outstanding This Month"
-          value={formatMoney(outstandingTotal, settings.currency)}
-          helper={`${outstanding.length} member${outstanding.length === 1 ? "" : "s"} with dues`}
-          tone={outstandingTotal > 0 ? "warning" : "positive"}
-        />
-      </section>
-
-      <MonthlyGrowthChart data={growthData} currency={settings.currency} />
-
-      <div className="two-column-grid">
-        <OutstandingList items={outstanding} currency={settings.currency} />
-        <RecentActivity items={recentActivity} currency={settings.currency} />
-      </div>
-    </div>
-  );
+export default function DashboardPage({members,contributions,withdrawals,auditTrail,settings,currentUser,onGoToPage,onRefresh}){
+ const [showBreakdown,setShowBreakdown]=useState(false); const health=getMonthlyHealth(members,contributions); const breakdown=getFundBreakdown(contributions,withdrawals); const attention=getAttentionItems(members,contributions,withdrawals); const growth=getMonthlyGrowth(contributions,withdrawals,settings.start_date); const activity=getRecentActivity(members,contributions,withdrawals,auditTrail,8); const active=members.filter(m=>m.role==='member');
+ const paidCount=health.rows.filter(r=>r.status==='paid').length, partialCount=health.rows.filter(r=>r.status==='partial').length;
+ const pendingTotal=breakdown.pendingWithdrawals;
+ async function copyReminder(row){await navigator.clipboard.writeText(reminderText(row.member,settings.currency,row.owed));window.alert(`Reminder copied for ${row.member.name}.`)}
+ return <div className="page-stack">
+  <section className="snapshot-card"><div><p className="eyebrow">Fund snapshot</p><h2>{settings.fund_name}</h2><button className="balance-button" onClick={()=>setShowBreakdown(!showBreakdown)}><strong>{formatMoney(breakdown.balance,settings.currency)}</strong><span>Current fund balance · click for breakdown</span></button></div><div className="snapshot-side"><span className="mini-label">This month</span><strong>{formatMoney(health.collected,settings.currency)}</strong><span>of {formatMoney(health.expected,settings.currency)} collected</span></div></section>
+  {showBreakdown&&<section className="card-section breakdown-grid"><div><span>Total contributions</span><strong>{formatMoney(breakdown.totalContributions,settings.currency)}</strong></div><div><span>Approved withdrawals</span><strong>{formatMoney(breakdown.approvedWithdrawals,settings.currency)}</strong></div><div><span>Pending withdrawals</span><strong>{formatMoney(breakdown.pendingWithdrawals,settings.currency)}</strong></div><div><span>Available balance</span><strong>{formatMoney(breakdown.balance,settings.currency)}</strong></div></section>}
+  <section className="monthly-health card-section"><div className="section-heading"><div><p className="eyebrow">Monthly fund health</p><h2>Contribution progress</h2></div><strong>{Math.round(health.percent)}%</strong></div><div className="progress-track"><div className="progress-fill" style={{width:`${health.percent}%`}}/></div><div className="health-stats"><span><b>{formatMoney(health.collected,settings.currency)}</b> collected</span><span><b>{formatMoney(health.outstanding,settings.currency)}</b> outstanding</span><span><b>{paidCount}</b> paid · <b>{partialCount}</b> partial · <b>{health.rows.filter(r=>r.owed>0&&r.status==='outstanding').length}</b> unpaid</span></div></section>
+  <section className="attention-card card-section"><div className="section-heading"><div><p className="eyebrow">Action centre</p><h2>Needs attention</h2></div></div><div className="attention-grid">{attention.map(item=><button key={item.key} className={`attention-item ${item.type}`} onClick={()=>onGoToPage(item.key==='withdrawals'?'withdrawals':'contributions')}><strong>{item.title}</strong><span>{item.detail}</span></button>)}</div></section>
+  {active.length>0&&<section className="card-section"><div className="section-heading"><div><p className="eyebrow">Consistency</p><h2>Member contribution record</h2></div></div><div className="member-health-grid">{active.map(m=>{const row=health.rows.find(r=>r.member.id===m.id);const streak=memberStreak(m,contributions);return <div className="member-health" key={m.id}><div><strong>{m.name}</strong><StatusBadge status={row?.status}/></div><span>{formatMoney(row?.paid||0,settings.currency)} / {formatMoney(m.monthly_target,settings.currency)} this month</span><small>{streak} month{streak===1?'':'s'} consecutive full payment</small>{row?.owed>0&&<button className="link-button" onClick={()=>copyReminder(row)}>Copy reminder</button>}</div>})}</div></section>}
+  <MonthlyGrowthChart data={growth} currency={settings.currency}/>
+  <div className="two-column-grid"><RecentActivity items={activity} currency={settings.currency}/><section className="card-section"><div className="section-heading"><div><p className="eyebrow">Withdrawal control</p><h2>Requests</h2></div><button className="secondary-button compact" onClick={()=>onGoToPage('withdrawals')}>View all</button></div><div className="summary-list"><div><span>Pending</span><strong>{formatMoney(pendingTotal,settings.currency)}</strong></div><div><span>Approved</span><strong>{formatMoney(breakdown.approvedWithdrawals,settings.currency)}</strong></div><div><span>Members</span><strong>{active.length}</strong></div></div></section></div>
+ </div>
 }

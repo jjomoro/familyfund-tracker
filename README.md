@@ -248,8 +248,12 @@ What changed:
 
 To apply on GitHub Pages, replace your current repo files with this version, commit, and push. No new Supabase SQL migration is required for this mobile-only update if you already ran the member-management migration.
 
-## Supabase Data API grants
 
-This version includes explicit PostgreSQL grants for the Data API on all FamilyFund application tables. The migration `supabase/migrations/20260924_data_api_grants.sql` applies the grants to an existing Supabase project. The base `supabase/schema.sql` also includes the grants so fresh setups, migrations, previews, and `supabase db reset` keep the permissions explicit.
+## Version 3 feature upgrade
+This release adds: personal/member dashboard improvements, action centre, fund health progress, contribution reminders, member payment streaks, balance breakdown, improved withdrawal workflow and filters, readable activity/notifications, search and filtering, monthly close/reopen controls, and closed-month history.
 
-The app does not grant `anon` access to family financial tables because application data requires authentication. Row-level access remains controlled by the existing RLS policies.
+### Supabase migration required
+After replacing the project files, run `supabase/migrations/20260925_familyfund_features.sql` in Supabase SQL Editor. This creates the monthly close table and applies explicit Data API grants. Existing financial data is preserved.
+
+### GitHub Pages
+Keep Pages source set to **GitHub Actions**. The workflow builds `dist` and deploys the Vite output.

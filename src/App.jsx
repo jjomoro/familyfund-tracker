@@ -18,9 +18,12 @@ import {
   signInWithEmail,
   signOut,
   signUpWithEmail,
-  submitWithdrawal as submitWithdrawalRequest
+  submitWithdrawal as submitWithdrawalRequest,
+  closeMonth as closeMonthRequest,
+  reopenMonth as reopenMonthRequest
 } from "./lib/fundService";
 import "./styles.css";
+import { getAttentionItems } from "./lib/featureUtils";
 
 const defaultSettings = {
   fund_name: "Family Emergency Fund",
@@ -36,6 +39,7 @@ export default function App() {
   const [settings, setSettings] = useState(defaultSettings);
   const [auditTrail, setAuditTrail] = useState([]);
   const [dashboardSnapshot, setDashboardSnapshot] = useState(null);
+  const [monthlyCloses, setMonthlyCloses] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [page, setPage] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +68,7 @@ export default function App() {
       setWithdrawals(data.withdrawals);
       setAuditTrail(data.auditTrail);
       setDashboardSnapshot(data.dashboardSnapshot);
+      setMonthlyCloses(data.monthlyCloses || []);
 
       if (!data.currentUser) {
         setErrorMessage("Your login is valid, but no member profile was found. Ask the admin to add your email in Settings.");
@@ -110,6 +115,7 @@ export default function App() {
       setWithdrawals([]);
       setAuditTrail([]);
       setDashboardSnapshot(null);
+      setMonthlyCloses([]);
       setIsLoading(false);
     }
   }, [isSignedIn, refreshData]);
@@ -187,6 +193,16 @@ export default function App() {
     runMutation(() => saveSettingsRequest({ currentUser, settings: nextSettings }));
   }
 
+  function closeMonth(payload) {
+    runMutation(() => closeMonthRequest({ currentUser, ...payload }));
+  }
+
+  function reopenMonth(payload) {
+    runMutation(() => reopenMonthRequest({ currentUser, ...payload }));
+  }
+
+  const notificationItems = getAttentionItems(members, contributions, withdrawals);
+
   const readyToRenderApp = useMemo(() => isSignedIn && currentUser && !isLoading, [isSignedIn, currentUser, isLoading]);
 
   if (!isSignedIn) {
@@ -228,6 +244,7 @@ export default function App() {
       onSignOut={handleSignOut}
       onRefresh={() => refreshData({ silent: true })}
       isRefreshing={isRefreshing}
+      notificationItems={notificationItems}
     >
       {errorMessage ? <div className="error-box page-error">{errorMessage}</div> : null}
 
@@ -239,6 +256,9 @@ export default function App() {
           auditTrail={auditTrail}
           settings={settings}
           dashboardSnapshot={dashboardSnapshot}
+          currentUser={currentUser}
+          onGoToPage={setPage}
+          onRefresh={() => refreshData({ silent: true })}
         />
       ) : null}
 
@@ -283,6 +303,9 @@ export default function App() {
           onDeleteMember={deleteMember}
           onSaveSettings={saveSettings}
           isSubmitting={isSubmitting}
+          monthlyCloses={monthlyCloses}
+          onCloseMonth={closeMonth}
+          onReopenMonth={reopenMonth}
         />
       ) : null}
     </Layout>

@@ -81,13 +81,14 @@ export function onAuthStateChange(callback) {
 }
 
 export async function loadFundData(authUserId) {
-  const [membersResult, settingsResult, contributionsResult, withdrawalsResult, auditResult, snapshotResult] = await Promise.all([
+  const [membersResult, settingsResult, contributionsResult, withdrawalsResult, auditResult, snapshotResult, closesResult] = await Promise.all([
     supabase.from("members").select("*").order("name", { ascending: true }),
     supabase.from("fund_settings").select("*").eq("id", 1).single(),
     supabase.from("contributions").select("*").order("recorded_at", { ascending: false }),
     supabase.from("withdrawals").select("*").order("requested_at", { ascending: false }),
     supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(20),
-    supabase.rpc("get_dashboard_snapshot")
+    supabase.rpc("get_dashboard_snapshot"),
+    supabase.from("monthly_closes").select("*").order("year", { ascending: false }).order("month", { ascending: false })
   ]);
 
   throwIfError(membersResult.error, "Could not load members");
@@ -96,6 +97,8 @@ export async function loadFundData(authUserId) {
   throwIfError(withdrawalsResult.error, "Could not load withdrawals");
   throwIfError(auditResult.error, "Could not load activity");
   throwIfError(snapshotResult.error, "Could not load dashboard summary");
+  // Monthly closes is optional until the v3 migration is applied.
+  // Keep the rest of the app usable while the migration is pending.
 
   const members = normalizeArray(membersResult.data).map((member) => ({
     ...member,
@@ -121,7 +124,8 @@ export async function loadFundData(authUserId) {
       ...item,
       amount: Number(item.amount || 0)
     })),
-    dashboardSnapshot: normalizeSnapshot(snapshotResult.data)
+    dashboardSnapshot: normalizeSnapshot(snapshotResult.data),
+    monthlyCloses: closesResult.error ? [] : normalizeArray(closesResult.data)
   };
 }
 
@@ -341,4 +345,20 @@ async function writeAudit(item) {
   });
 
   throwIfError(error, "Could not write audit log");
+}
+
+
+export async function closeMonth({ currentUser, month, year }) {
+  if (currentUser.role !== "admin") throw new Error("Only admins can close a month.");
+  const { data, error } = await supabase.from("monthly_closes").upsert({ month:Number(month), year:Number(year), closed_by:currentUser.id }, { onConflict:"month,year" }).select().single();
+  throwIfError(error, "Could not close month");
+  await writeAudit({ ...buildAuditItem({ type:"month_closed", title:"Month closed", detail:`${month}/${year} was marked as reviewed and closed.`, amount:0, status:"closed" }), actor_member_id:currentUser.id });
+  return data;
+}
+
+export async function reopenMonth({ currentUser, month, year }) {
+  if (currentUser.role !== "admin") throw new Error("Only admins can reopen a month.");
+  const { error } = await supabase.from("monthly_closes").delete().eq("month", Number(month)).eq("year", Number(year));
+  throwIfError(error, "Could not reopen month");
+  await writeAudit({ ...buildAuditItem({ type:"month_reopened", title:"Month reopened", detail:`${month}/${year} was reopened for corrections.`, amount:0, status:"reopened" }), actor_member_id:currentUser.id });
 }
