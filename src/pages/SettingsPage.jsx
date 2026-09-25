@@ -17,6 +17,20 @@ export default function SettingsPage({ members, currentUser, settings, onSaveMem
   const year = now.getFullYear();
   const closed = monthlyCloses?.find((item) => Number(item.month) === month && Number(item.year) === year);
 
+  const activeAdmins = members.filter((item) => item.role === "admin" && !item.deleted_at);
+
+  function handleRoleChange(member) {
+    const makeAdmin = member.role !== "admin";
+    if (!makeAdmin && activeAdmins.length <= 1) {
+      window.alert("At least one active admin must remain on the fund.");
+      return;
+    }
+    const action = makeAdmin ? "make" : "remove";
+    if (window.confirm(`Are you sure you want to ${action} ${member.name} ${makeAdmin ? "an admin" : "from the admin role"}?`)) {
+      onSaveMember({ ...member, role: makeAdmin ? "admin" : "member" });
+    }
+  }
+
   function handleDelete(member) {
     if (member.id === currentUser.id) return;
     if (window.confirm(`Remove ${member.name} from active fund access?\n\nHistorical records will be kept.`)) onDeleteMember(member);
@@ -64,11 +78,11 @@ export default function SettingsPage({ members, currentUser, settings, onSaveMem
 
       <section className="table-card">
         <div className="section-heading"><div><p className="eyebrow">Members</p><h2>Family Members</h2></div><button className="primary-button" onClick={() => { setEditingMember(null); setShowMemberDialog(true); }}>Add Member</button></div>
-        <p className="muted member-help">Add members here, then copy an invite. They should register using the same email address.</p>
+        <p className="muted member-help">Add members here, then copy an invite. Admins can manage contributions, withdrawals, settings and member access. Keep at least one active admin at all times.</p>
         <div className="table-wrap">
           <table>
             <thead><tr><th>Name</th><th>Email</th><th>Monthly Target</th><th>Role</th><th>Actions</th></tr></thead>
-            <tbody>{members.map((member) => <tr key={member.id}><td>{member.name}</td><td>{member.email}</td><td>{formatMoney(member.monthly_target, settings.currency)}</td><td><StatusBadge status={member.role} /></td><td><div className="inline-actions"><button className="secondary-button compact" onClick={() => { setEditingMember(member); setShowMemberDialog(true); }}>Edit</button><button className="secondary-button compact" onClick={() => copyInvite(member)}>Copy Invite</button><button className="reject-button compact" onClick={() => handleDelete(member)} disabled={member.id === currentUser.id}>Remove</button></div></td></tr>)}</tbody>
+            <tbody>{members.map((member) => <tr key={member.id}><td data-label="Name">{member.name}</td><td data-label="Email">{member.email}</td><td data-label="Monthly Target">{formatMoney(member.monthly_target, settings.currency)}</td><td data-label="Role"><StatusBadge status={member.role} /></td><td data-label="Actions"><div className="inline-actions"><button className="secondary-button compact" onClick={() => { setEditingMember(member); setShowMemberDialog(true); }}>Edit</button><button className="secondary-button compact" onClick={() => handleRoleChange(member)} disabled={member.id === currentUser.id && member.role === "admin"}>{member.role === "admin" ? "Remove Admin" : "Make Admin"}</button><button className="secondary-button compact" onClick={() => copyInvite(member)}>Copy Invite</button><button className="reject-button compact" onClick={() => handleDelete(member)} disabled={member.id === currentUser.id}>Remove</button></div></td></tr>)}</tbody>
           </table>
         </div>
       </section>
