@@ -12,6 +12,8 @@ import {
   onAuthStateChange,
   deleteMember as deleteMemberRequest,
   recordContribution as recordContributionRequest,
+  submitMpesaPayment as submitMpesaPaymentRequest,
+  verifyContribution as verifyContributionRequest,
   reviewWithdrawal as reviewWithdrawalRequest,
   saveMember as saveMemberRequest,
   saveSettings as saveSettingsRequest,
@@ -172,6 +174,14 @@ export default function App() {
     runMutation(() => recordContributionRequest({ members, contributions, currentUser, payload }));
   }
 
+  function submitMpesaPayment(payload) {
+    runMutation(() => submitMpesaPaymentRequest({ members, contributions, currentUser, payload }));
+  }
+
+  function verifyContribution(contributionId, decision) {
+    runMutation(() => verifyContributionRequest({ members, contributions, currentUser, contributionId, decision }));
+  }
+
   function submitWithdrawal(payload) {
     runMutation(() => submitWithdrawalRequest({ members, currentUser, payload }));
   }
@@ -269,6 +279,8 @@ export default function App() {
           contributions={contributions}
           settings={settings}
           onRecordContribution={recordContribution}
+          onSubmitMpesaPayment={submitMpesaPayment}
+          onVerifyContribution={verifyContribution}
           isSubmitting={isSubmitting}
         />
       ) : null}

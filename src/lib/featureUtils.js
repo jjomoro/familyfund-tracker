@@ -17,9 +17,11 @@ export function getMonthlyHealth(members, contributions, period=getCurrentPeriod
 export function getAttentionItems(members, contributions, withdrawals) {
   const health=getMonthlyHealth(members,contributions);
   const pending=withdrawals.filter(w=>w.status==='pending');
+  const pendingPayments=contributions.filter(c=>c.payment_method==='mpesa' && c.verification_status==='pending');
   const items=[];
   if(health.outstanding>0) items.push({key:'dues',type:'warning',title:`${health.rows.filter(r=>r.owed>0).length} member${health.rows.filter(r=>r.owed>0).length===1?'':'s'} with outstanding dues`,detail:`${health.outstanding.toLocaleString()} still due this month`});
   if(pending.length) items.push({key:'withdrawals',type:'danger',title:`${pending.length} withdrawal request${pending.length===1?'':'s'} awaiting approval`,detail:`${pending.reduce((s,w)=>s+Number(w.amount||0),0).toLocaleString()} pending`});
+  if(pendingPayments.length) items.push({key:'contributions',type:'warning',title:`${pendingPayments.length} M-Pesa payment${pendingPayments.length===1?'':'s'} awaiting verification`,detail:`${pendingPayments.reduce((s,p)=>s+Number(p.amount||0),0).toLocaleString()} submitted`});
   if(!items.length) items.push({key:'clear',type:'success',title:'Nothing needs attention',detail:'Current contributions and withdrawal requests are up to date.'});
   return items;
 }

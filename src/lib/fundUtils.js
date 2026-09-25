@@ -31,7 +31,9 @@ export function getMemberById(members, memberId) {
 }
 
 export function calculateFundBalance(contributions, withdrawals) {
-  const totalContributions = contributions.reduce((sum, contribution) => sum + Number(contribution.amount || 0), 0);
+  const totalContributions = contributions
+    .filter((contribution) => contribution.verification_status !== "pending" && contribution.verification_status !== "rejected")
+    .reduce((sum, contribution) => sum + Number(contribution.amount || 0), 0);
   const approvedWithdrawals = withdrawals
     .filter((withdrawal) => withdrawal.status === "approved")
     .reduce((sum, withdrawal) => sum + Number(withdrawal.amount || 0), 0);
@@ -45,7 +47,9 @@ export function getMemberMonthlyPaid(contributions, memberId, month, year) {
       (contribution) =>
         contribution.member_id === memberId &&
         Number(contribution.month) === Number(month) &&
-        Number(contribution.year) === Number(year)
+        Number(contribution.year) === Number(year) &&
+        contribution.verification_status !== "pending" &&
+        contribution.verification_status !== "rejected"
     )
     .reduce((sum, contribution) => sum + Number(contribution.amount || 0), 0);
 }
@@ -93,7 +97,7 @@ export function getMonthlyGrowth(contributions, withdrawals, startDate) {
   let runningBalance = 0;
   return getMonthsSinceStart(startDate).map(({ month, year }) => {
     const monthContributionTotal = contributions
-      .filter((contribution) => Number(contribution.month) === month && Number(contribution.year) === year)
+      .filter((contribution) => Number(contribution.month) === month && Number(contribution.year) === year && contribution.verification_status !== "pending" && contribution.verification_status !== "rejected")
       .reduce((sum, contribution) => sum + Number(contribution.amount || 0), 0);
 
     const monthWithdrawalTotal = withdrawals

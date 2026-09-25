@@ -114,7 +114,9 @@ export async function loadFundData(authUserId) {
     settings: settingsResult.data,
     contributions: normalizeArray(contributionsResult.data).map((contribution) => ({
       ...contribution,
-      amount: Number(contribution.amount || 0)
+      amount: Number(contribution.amount || 0),
+      verification_status: contribution.verification_status || "verified",
+      payment_method: contribution.payment_method || "manual"
     })),
     withdrawals: normalizeArray(withdrawalsResult.data).map((withdrawal) => ({
       ...withdrawal,
@@ -145,7 +147,11 @@ export async function recordContribution({ members, contributions, currentUser, 
       month: Number(payload.month),
       year: Number(payload.year),
       status,
-      recorded_by: currentUser.id
+      payment_method: "manual",
+      verification_status: "verified",
+      recorded_by: currentUser.id,
+      verified_by: currentUser.id,
+      verified_at: new Date().toISOString()
     })
     .select()
     .single();
@@ -163,6 +169,61 @@ export async function recordContribution({ members, contributions, currentUser, 
     actor_member_id: currentUser.id
   });
 
+  return data;
+}
+
+
+export async function submitMpesaPayment({ members, contributions, currentUser, payload }) {
+  if (currentUser.role === "admin") throw new Error("Use the admin contribution form for manual entries.");
+  const reference = String(payload.transaction_reference || "").trim().toUpperCase();
+  if (!reference) throw new Error("Enter the M-Pesa transaction code.");
+  const amount = Number(payload.amount || 0);
+  if (amount <= 0) throw new Error("Enter a valid payment amount.");
+
+  const duplicate = contributions.find(c => String(c.transaction_reference || "").toUpperCase() === reference);
+  if (duplicate) throw new Error("This M-Pesa transaction code has already been submitted.");
+
+  const status = getContributionStatus(currentUser.monthly_target || 0, getMemberMonthlyPaid(contributions, currentUser.id, payload.month, payload.year) + amount);
+  const { data, error } = await supabase.from("contributions").insert({
+    member_id: currentUser.id,
+    amount,
+    month: Number(payload.month),
+    year: Number(payload.year),
+    status,
+    payment_method: "mpesa",
+    transaction_reference: reference,
+    payment_date: payload.payment_date || new Date().toISOString().slice(0, 10),
+    verification_status: "pending",
+    recorded_by: currentUser.id
+  }).select().single();
+
+  throwIfError(error, error?.code === "23505" ? "This M-Pesa transaction code has already been submitted." : "Could not submit M-Pesa payment");
+  await writeAudit({
+    ...buildAuditItem({ type: "mpesa_payment_submitted", title: "M-Pesa payment submitted", detail: `${currentUser.name} submitted ${amount.toLocaleString()} for ${payload.month}/${payload.year} — ${reference}`, amount, status: "pending" }),
+    actor_member_id: currentUser.id
+  });
+  return data;
+}
+
+export async function verifyContribution({ members, contributions, currentUser, contributionId, decision }) {
+  if (currentUser.role !== "admin") throw new Error("Only admins can verify payments.");
+  const contribution = contributions.find(c => c.id === contributionId);
+  if (!contribution || contribution.verification_status !== "pending") throw new Error("This payment is no longer awaiting verification.");
+  const member = getMemberById(members, contribution.member_id);
+  if (!member) throw new Error("Member not found for this payment.");
+
+  if (decision === "rejected") {
+    const { data, error } = await supabase.from("contributions").update({ verification_status: "rejected", verified_by: currentUser.id, verified_at: new Date().toISOString() }).eq("id", contribution.id).select().single();
+    throwIfError(error, "Could not reject payment");
+    await writeAudit({ ...buildAuditItem({ type: "mpesa_payment_rejected", title: "M-Pesa payment rejected", detail: `${member.name}'s ${contribution.transaction_reference} payment was rejected`, amount: contribution.amount, status: "rejected" }), actor_member_id: currentUser.id });
+    return data;
+  }
+
+  const paidBefore = getMemberMonthlyPaid(contributions.filter(c => c.id !== contribution.id), member.id, contribution.month, contribution.year);
+  const status = getContributionStatus(member.monthly_target, paidBefore + Number(contribution.amount));
+  const { data, error } = await supabase.from("contributions").update({ verification_status: "verified", status, verified_by: currentUser.id, verified_at: new Date().toISOString() }).eq("id", contribution.id).select().single();
+  throwIfError(error, "Could not verify payment");
+  await writeAudit({ ...buildAuditItem({ type: "mpesa_payment_verified", title: "M-Pesa payment verified", detail: `${member.name}'s ${contribution.transaction_reference} payment was verified`, amount: contribution.amount, status }), actor_member_id: currentUser.id });
   return data;
 }
 

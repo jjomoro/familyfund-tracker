@@ -50,6 +50,12 @@ create table if not exists public.contributions (
   month int not null check (month between 1 and 12),
   year int not null check (year between 2020 and 2100),
   status text not null check (status in ('paid', 'partial', 'outstanding')),
+  payment_method text not null default 'manual' check (payment_method in ('manual','mpesa','cash','bank','other')),
+  transaction_reference text,
+  payment_date date,
+  verification_status text not null default 'verified' check (verification_status in ('pending','verified','rejected')),
+  verified_by uuid references public.members(id) on delete set null,
+  verified_at timestamptz,
   recorded_by uuid references public.members(id) on delete set null,
   recorded_at timestamptz not null default now()
 );
@@ -175,6 +181,7 @@ drop policy if exists "settings_select_authenticated" on public.fund_settings;
 drop policy if exists "settings_admin_write" on public.fund_settings;
 drop policy if exists "contributions_select_scope" on public.contributions;
 drop policy if exists "contributions_admin_insert" on public.contributions;
+drop policy if exists "contributions_insert_scope" on public.contributions;
 drop policy if exists "contributions_admin_update" on public.contributions;
 drop policy if exists "contributions_admin_delete" on public.contributions;
 drop policy if exists "withdrawals_select_scope" on public.withdrawals;
@@ -223,10 +230,13 @@ using (
   or member_id = public.current_member_id()
 );
 
-create policy "contributions_admin_insert"
+create policy "contributions_insert_scope"
 on public.contributions for insert
 to authenticated
-with check (public.is_admin());
+with check (
+  public.is_admin()
+  or (member_id = public.current_member_id() and verification_status = 'pending' and payment_method = 'mpesa' and recorded_by = public.current_member_id())
+);
 
 create policy "contributions_admin_update"
 on public.contributions for update
@@ -305,7 +315,7 @@ begin
       coalesce((
         select sum(c.amount)
         from public.contributions c
-        where make_date(c.year, c.month, 1) = m.month_start
+        where c.verification_status = 'verified' and make_date(c.year, c.month, 1) = m.month_start
       ), 0) as contribution_total,
       coalesce((
         select sum(w.amount)
@@ -332,8 +342,8 @@ begin
       mem.id as member_id,
       mem.name,
       mem.monthly_target,
-      coalesce(sum(c.amount), 0) as paid,
-      greatest(mem.monthly_target - coalesce(sum(c.amount), 0), 0) as owed,
+      coalesce(sum(c.amount) filter (where c.verification_status = 'verified'), 0) as paid,
+      greatest(mem.monthly_target - coalesce(sum(c.amount) filter (where c.verification_status = 'verified'), 0), 0) as owed,
       case
         when mem.monthly_target <= 0 then 'paid'
         when coalesce(sum(c.amount), 0) >= mem.monthly_target then 'paid'
@@ -356,7 +366,7 @@ begin
     limit 5
   )
   select jsonb_build_object(
-    'fundBalance', coalesce((select sum(amount) from public.contributions), 0)
+    'fundBalance', coalesce((select sum(amount) from public.contributions where verification_status = 'verified'), 0)
       - coalesce((select sum(amount) from public.withdrawals where status = 'approved'), 0),
     'currency', fund_currency,
     'monthlyGrowth', coalesce((select jsonb_agg(to_jsonb(g) - 'month_start' order by g.month_start) from growth g), '[]'::jsonb),
@@ -401,3 +411,6 @@ create policy "monthly_closes_admin_update" on public.monthly_closes for update 
 grant select on public.monthly_closes to authenticated;
 grant insert, update on public.monthly_closes to authenticated;
 grant all on public.monthly_closes to service_role;
+
+create unique index if not exists contributions_transaction_reference_unique on public.contributions (lower(transaction_reference)) where transaction_reference is not null;
+grant execute on function public.get_dashboard_snapshot() to authenticated;

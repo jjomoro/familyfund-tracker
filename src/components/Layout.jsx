@@ -51,7 +51,7 @@ export default function Layout({ children, page, setPage, currentUser, settings,
           <div className="user-panel">
             <div className="notification-wrap">
               <button type="button" className="notification-button" onClick={() => setShowNotifications(!showNotifications)} aria-label="Notifications">Alerts{activeNotifications.length ? <span>{activeNotifications.length}</span> : null}</button>
-              {showNotifications ? <div className="notification-popover"><strong>Notifications</strong>{notificationItems.map(item => <button key={item.key} type="button" onClick={() => { setShowNotifications(false); if(item.key === "withdrawals") setPage("withdrawals"); else if(item.key === "dues") setPage("contributions"); }}><b>{item.title}</b><small>{item.detail}</small></button>)}</div> : null}
+              {showNotifications ? <div className="notification-popover"><strong>Notifications</strong>{notificationItems.map(item => <button key={item.key} type="button" onClick={() => { setShowNotifications(false); if(item.key === "withdrawals") setPage("withdrawals"); else if(item.key === "dues" || item.key === "contributions") setPage("contributions"); }}><b>{item.title}</b><small>{item.detail}</small></button>)}</div> : null}
             </div>
             <div className="signed-in-card">
               <span>Signed in as</span>
